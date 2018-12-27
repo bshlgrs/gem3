@@ -10,7 +10,7 @@ import qualified Data.Set as S
 import Control.Lens.TH
 import Control.Lens
 import Gem3.Cas
-import Data.List (find)
+import Data.List (find, isPrefixOf, intercalate)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
 
@@ -87,7 +87,18 @@ makeAllEquations values (path, relationId) =
       catMaybes <$> traverse tryToMakeEquation values
   where
     tryToMakeEquation :: Value -> Interpreter (Maybe Value)
-    tryToMakeEquation val = undefined
+    tryToMakeEquation val = pure $ removeAllPrefixes val
+
+    removeAllPrefixes :: Value -> Maybe Value
+    removeAllPrefixes (CasExpr k factors) = CasExpr k . M.fromList <$>
+                                traverse removePrefix (M.toList factors)
+
+    removePrefix :: (VariableRef, Number) -> Maybe (VariableRef, Number)
+    removePrefix (ref, n) = case ref of
+      PathRef path2
+        | path `isPrefixOf` path2 -> Just (RelationVarRef relationId (drop (length path) path2), n)
+        | otherwise -> Nothing
+      _ -> Nothing
 {-
 filter the equation based on whether all its variables are inside the path
 
@@ -107,4 +118,5 @@ the result would be
 
 
 tryToSolve :: [Value] -> Path -> Either String Value
-tryToSolve equations var = undefined
+tryToSolve equations var = error $ "Solving for " <> show var <> ":\n\n" <>
+                                    intercalate "\n" (map show equations)

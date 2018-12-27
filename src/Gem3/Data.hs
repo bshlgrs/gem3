@@ -3,13 +3,19 @@ import Data.Map (Map, fromList)
 import qualified Data.Map as M
 import Data.Group
 import Gem3.Cas
-type Path = [String]
+import Data.List (intercalate)
 
+type Path = [String]
 
 data VariableRef
   = PathRef [String]
   | RelationVarRef RelationId Path
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show VariableRef where
+  show = \case
+    PathRef strings -> intercalate "@" strings
+    RelationVarRef id path -> "@!@" <> show id <> "@" <> intercalate "@" path
 
 simpleName :: String -> VariableRef
 simpleName x = PathRef [x]
@@ -44,7 +50,10 @@ type Value = CasExprOver Number VariableRef
 type RelationId = Int
 
 data Number = SimpleNumber Float
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Number where
+  show (SimpleNumber f) = show f
 
 data Command = SolveCommand Path
              | PrintStrCommand String

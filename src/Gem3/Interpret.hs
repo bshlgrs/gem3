@@ -31,6 +31,10 @@ interpretExpr = \case
     (xVal, xDim) <- interpretExpr x
     (yVal, yDim) <- interpretExpr y
     pure (xVal * yVal, xDim <> yDim)
+  FuncCall ["/"] [x, y] -> do
+    (xVal, xDim) <- interpretExpr x
+    (yVal, yDim) <- interpretExpr y
+    pure (xVal / yVal, xDim <> yDim)
   FuncCall other _ -> error $ "You called the function " <> show other <>
                                 ", but only multiplcation is defined right now"
   FieldExpr modExpr fieldName -> do

@@ -11,7 +11,7 @@ kineticEnergyDefMod = Module [
     DeclType "mass" kgDim,
     DeclType "velocity" (mDim <> invert sDim),
     DeclType "energy" joule,
-    SetEqual (simpleVar "energy") (simpleVar "mass" * simpleVar "velocity" `numPow` 2)
+    SetEqual (simpleVar "energy") (simpleVar "mass" * simpleVar "velocity" `numPow` 2 / fromInteger 2)
   ]
 
 kineticEnergyUseExample = [
