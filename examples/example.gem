@@ -1,0 +1,71 @@
+## sun stuff from yesterday
+
+massOfSun := 2e30kg
+radiusOfSun := ???m
+massOfCore := massOfSun * 34%
+radiusOfCore := 20% * radiusOfSun
+volumeOfCore := sphere(radius: radiusOfCore).volume
+densityOfCore := massOfCore / volumeOfCore
+powerOutput := ???W
+powerOutputPerMassInCore := powerOutputOfSun / massOfCore
+powerOutputPerVolumeInCore := powerOutputOfSun / volumeOfCore
+
+###
+
+# Classic brick question
+
+massOfBrick :: kg
+height := 4m
+velocity :: m/s
+kineticEnergy := kineticEnergyDef(v: velocity, m: massOfBrick).energy
+potentialEnergy := massOfBrick * common.earthGravity * height
+set kineticEnergy = potentialEnergy
+solve velocity
+
+##
+
+ballMass :: kg
+gunHeight :: m
+floorDistance = 2.2m
+springConstant :: N / m
+
+def distanceTravelled {
+  compression :: m
+  springEnergy := springPE(k = springConstant, x = compression).energy
+  ballSpeed := kineticEnergyDef({ E: springEnergy, m: ballMass }).v
+  flightTime :: s
+  distanceFallen := 1/2 * earthGravity * flightTime ** 2
+  set distanceFallen gunHeight
+  distance := ballSpeed * flightTime
+}
+
+set distanceTravelled(compression: 1.1cm).distance = floorDistance - 27cm
+solve distanceTravelled(distance: floorDistance).compression
+
+##
+
+massOfPlanet := 5e23kg
+massOfProbe := 10kg
+radiusOfPlanet := 3e6m
+initialEnergy := 5e7J
+
+peFromPlanet := gravitationalPE(m1: massOfPlanet, m2: massOfProbe)
+peAtSurface := peFromPlanet(r: radiusOfPlanet)
+peAtPosition2 := peFromPlanet(r: ???m)
+peAtPosition3 := peFromPlanet(r: ???m)
+
+keAtPosition2 :: J
+set keAtPosition2 + peAtPosition2 = initialEnergy + peAtSurface
+solve keAtPosition2
+
+keToGetToPosition3 := peAtPosition3 - peAtSurface
+
+###
+
+def kineticEnergyDef {
+  E :: J
+  m :: kg
+  v :: m/s
+  set E = 1/2 * m * v**2
+}
+
