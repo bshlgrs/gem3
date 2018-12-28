@@ -15,7 +15,7 @@ data VariableRef
 instance Show VariableRef where
   show = \case
     PathRef strings -> intercalate "@" strings
-    RelationVarRef id path -> "@!@" <> show id <> "@" <> intercalate "@" path
+    RelationVarRef id path -> "@Rel-" <> show id <> "@" <> intercalate "@" path
 
 simpleName :: String -> VariableRef
 simpleName x = PathRef [x]
@@ -24,7 +24,12 @@ data Unit = Meter | Kilogram | Second
   deriving (Show, Eq, Ord)
 
 data Dimension = Dimension (Map Unit Number)
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Dimension where
+  show (Dimension m) = intercalate "*" (map
+      (\(dim, power) -> if power == 1 then show dim else show dim <> "**" <> show power)
+      (M.toList m))
 
 data Stmt
   = DeclVal String Expr
@@ -35,7 +40,7 @@ data Stmt
 
 data Expr
   = Num Number Dimension
-  | Var VariableRef
+  | PathRefExpr Path
   | FuncCall Path [Expr]
   | FieldExpr ModuleExpr String
   deriving (Show, Eq, Ord)
@@ -55,7 +60,7 @@ data Number = SimpleNumber Float
 instance Show Number where
   show (SimpleNumber f) = show f
 
-data Command = SolveCommand Path
+data Command = EvalCommand Path
              | PrintStrCommand String
              | PrintExprCommand Expr
   deriving (Show, Eq, Ord)
@@ -73,7 +78,7 @@ mDim = Dimension $ fromList [(Meter, SimpleNumber 1.0)]
 sDim = Dimension $ fromList [(Second, SimpleNumber 1.0)]
 joule = kgDim <> (pow mDim 2) <> (pow sDim (-2))
 
-simpleVar = Var . simpleName
+simpleVar x = PathRefExpr [x]
 
 numPow :: (Fractional a) => a -> Int -> a
 numPow num n
@@ -106,6 +111,20 @@ instance Fractional Number where
   fromRational = SimpleNumber . fromRational
   recip (SimpleNumber n) = SimpleNumber $ recip n
 
+instance Floating Number where
+  pi = SimpleNumber pi
+  exp (SimpleNumber x) = SimpleNumber $ exp x
+  log (SimpleNumber x) = SimpleNumber $ log x
+  sin (SimpleNumber x) = SimpleNumber $ sin x
+  cos (SimpleNumber x) = SimpleNumber $ cos x
+  asin (SimpleNumber x) = SimpleNumber $ asin x
+  acos (SimpleNumber x) = SimpleNumber $ acos x
+  atan (SimpleNumber x) = SimpleNumber $ atan x
+  sinh (SimpleNumber x) = SimpleNumber $ sinh x
+  cosh (SimpleNumber x) = SimpleNumber $ cosh x
+  asinh (SimpleNumber x) = SimpleNumber $ asinh x
+  acosh (SimpleNumber x) = SimpleNumber $ acosh x
+  atanh (SimpleNumber x) = SimpleNumber $ atanh x
 
 instance Semigroup Dimension where
   (Dimension m) <> (Dimension m2) = Dimension $ M.unionWith (+) m m2

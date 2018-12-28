@@ -34,7 +34,7 @@ instance InterpreterM Interpreter where
     path <- ask
     stuff <- get
     lift $ Left $ "At path " <> show path <> ": " <> x <> "\n\n" <> show stuff
-  extendName path2 = do
+  extendPath path2 = do
     path <- ask
     pure $ path ++ path2
   declVal name val dim = do
@@ -46,7 +46,7 @@ instance InterpreterM Interpreter where
   declareModule name stuff = local (++ [name]) stuff
   getDim varRef = do
     pathToQuery <- case varRef of
-      PathRef path -> extendName path
+      PathRef path -> pure $ path
       RelationVarRef id path -> do
         relations <- _relations <$> get
         let parentPath = relations !! id
@@ -72,22 +72,22 @@ instance InterpreterM Interpreter where
       Nothing -> boom $ "You tried to refer to the alleged relation " <> show name <>
                                         ", which is undefined"
       Just x -> pure x
-  solve path = do
+  eval path = do
     stuff <- get
-    let equations = S.toList $ _equations stuff
+    dim <- getDim (PathRef path)
+    let equations = _equations stuff
     let relations = _relations stuff
-    relationEquations <- traverse (makeAllEquations equations) (zip relations [0..])
+    let relationEquations = S.fromList $ concat $ traverse (makeAllEquations (S.toList equations)) (zip relations [0..])
 
-    case tryToSolve (concat relationEquations <> equations) path of
+    case tryToSolve (relationEquations <> equations) path of
       Left x -> boom x
       Right x -> pure x
 
-makeAllEquations :: [Value] -> (Path, RelationId) -> Interpreter [Value]
-makeAllEquations values (path, relationId) =
-      catMaybes <$> traverse tryToMakeEquation values
+makeAllEquations :: [Value] -> (Path, RelationId) -> [Value]
+makeAllEquations values (path, relationId) = catMaybes $ map tryToMakeEquation values
   where
-    tryToMakeEquation :: Value -> Interpreter (Maybe Value)
-    tryToMakeEquation val = pure $ removeAllPrefixes val
+    tryToMakeEquation :: Value -> Maybe Value
+    tryToMakeEquation val = removeAllPrefixes val
 
     removeAllPrefixes :: Value -> Maybe Value
     removeAllPrefixes (CasExpr k factors) = CasExpr k . M.fromList <$>
@@ -117,6 +117,11 @@ the result would be
 -}
 
 
-tryToSolve :: [Value] -> Path -> Either String Value
-tryToSolve equations var = error $ "Solving for " <> show var <> ":\n\n" <>
-                                    intercalate "\n" (map show equations)
+tryToSolve :: S.Set Value -> Path -> Either String Number
+tryToSolve equations var = -- error $ show var <> " " <> show equations
+  maybe (Left "couldn't solve") Right
+    (searchForSolution equations (PathRef var))
+    -- error $ "Solving for " <> show var <> ":\n\n" <>
+    --                                 intercalate "\n" (map show $ S.toList equations)
+
+

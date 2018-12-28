@@ -4,6 +4,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.List (intercalate)
+import Data.Maybe (catMaybes)
 -- time to make yet another shitty computer algebra system
 
 data CasExprOver numType x = CasExpr {
@@ -35,9 +36,40 @@ getAllVars :: CasExprOver a b -> S.Set b
 getAllVars (CasExpr _ f) = M.keysSet f
 
 instance (Eq numType, Num numType, Show numType, Show x) => Show (CasExprOver numType x) where
-  show (CasExpr k factors) = show k <> " * " <>
+  show (CasExpr k factors)
+    | M.null factors  = show k
+    | otherwise = show k <> " * " <>
                     intercalate " * "
                         (map
                           (\(k, p) ->
                              if p == fromInteger 1 then show k else show k <> "**" <> show p)
                           $ M.toList factors)
+
+solveFor :: (Ord a, Floating num) => a -> CasExprOver num a -> Maybe (CasExprOver num a)
+solveFor name (CasExpr k factors) = case M.lookup name factors of
+  Nothing -> Nothing
+  Just power -> let
+    factorsWithNameRemoved = M.delete name factors
+    inversePower = 1 / power
+    in Just $ CasExpr (k ** (-inversePower)) (fmap (** inversePower) factorsWithNameRemoved)
+
+evaluate :: (Ord a, Floating num) => (a -> Maybe num) -> CasExprOver num a -> Maybe num
+evaluate f (CasExpr k factors) = do
+  nums <- traverse (\(k, v) -> (**v) <$> f k) (M.toList factors)
+  pure $ k * (foldr (*) 1 nums)
+
+searchForSolution :: (Floating n, Ord n, Ord v) => S.Set (CasExprOver n v) -> v
+                      -> Maybe n
+searchForSolution equations var = let
+  solutions = S.map (evalVarWithEquation var equations) equations
+    in case catMaybes $ S.toList solutions of
+    -- if there are multiple, check equalitys
+    [x] -> Just x
+    _ -> Nothing
+
+
+evalVarWithEquation :: (Floating n, Ord n, Ord a) => a -> S.Set (CasExprOver n a)
+  -> CasExprOver n a -> Maybe n
+evalVarWithEquation var equations equation = do
+    expression <- solveFor var equation
+    evaluate (\name -> searchForSolution (S.delete equation equations) name) expression

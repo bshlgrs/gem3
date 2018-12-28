@@ -9,10 +9,10 @@ interpretStmt :: InterpreterM m => Stmt -> m ()
 interpretStmt = \case
   DeclVal str expr -> do
     (val, dim) <- interpretExpr expr
-    fullName <- extendName [str]
+    fullName <- extendPath [str]
     declVal fullName val dim
   DeclType name dimension -> do
-    flip declType dimension =<< extendName [name]
+    flip declType dimension =<< extendPath [name]
   SetEqual l r -> do
     (lVal, lDim) <- interpretExpr l
     (rVal, rDim) <- interpretExpr r
@@ -24,9 +24,10 @@ interpretStmt = \case
 interpretExpr :: InterpreterM m => Expr -> m (Value, Dimension)
 interpretExpr = \case
   Num number dimension -> pure (Cas.pureNum number, dimension)
-  Var varRef -> do
-    dim <- getDim varRef
-    pure (Cas.pureVar varRef, dim)
+  PathRefExpr path -> do
+    fullName <- extendPath path
+    dim <- getDim $ PathRef fullName
+    pure (Cas.pureVar $ PathRef fullName, dim)
   FuncCall ["*"] [x, y] -> do
     (xVal, xDim) <- interpretExpr x
     (yVal, yDim) <- interpretExpr y
@@ -45,20 +46,22 @@ interpretExpr = \case
 
 interpretModuleExpr :: InterpreterM m => ModuleExpr -> m RelationId
 interpretModuleExpr = \case
-  ModuleCallExpr name givens -> do
+  ModuleCallExpr modulePath givens -> do
     let givensList = M.toList givens
-    interpretedGivens <- traverse (\(x, y) -> (x,) . fst <$> interpretExpr y) givensList
-    newRelationId <- makeRelation name
+    newRelationId <- makeRelation modulePath
+    interpretedGivens <- traverse
+        (\(x, y) -> (RelationVarRef newRelationId x,) . fst <$> interpretExpr y)
+        givensList
     -- traverse ()
-    let handleEq (name, val) = setEqual (Cas.pureVar $ PathRef name) val
+    let handleEq (moduleVar, val) = setEqual (Cas.pureVar $ moduleVar) val
     traverse handleEq interpretedGivens
     pure newRelationId
-  ModuleNameExpr name -> getRelationId name
+  ModuleNameExpr modulePath -> getRelationId modulePath
 
 interpretCommand :: InterpreterM m => Command -> m ()
 interpretCommand = \case
-  SolveCommand name -> do
-    solution <- solve name
+  EvalCommand name -> do
+    solution <- eval name
     printString $ show solution
   PrintStrCommand str -> printString str
   PrintExprCommand expr -> do

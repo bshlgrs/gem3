@@ -3,7 +3,7 @@ import Gem3.Data
 
 class Monad m => InterpreterM m where
   boom :: InterpreterError -> m a
-  extendName :: Path -> m Path
+  extendPath :: Path -> m Path
   declVal :: Path -> Value -> Dimension -> m ()
   declType :: Path -> Dimension -> m ()
   setEqual :: Value -> Value -> m ()
@@ -12,4 +12,4 @@ class Monad m => InterpreterM m where
   makeRelation :: Path -> m Int
   printString :: String -> m ()
   getRelationId :: Path -> m RelationId
-  solve :: Path -> m Value
+  eval :: Path -> m Number

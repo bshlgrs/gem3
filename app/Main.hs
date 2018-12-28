@@ -1,6 +1,8 @@
 module Main where
 
-import Lib
+import Gem3.Lib
 
-main :: IO ()
-main = someFunc
+main = case runProgram initialProgram of
+  Left x -> putStrLn x
+  Right x -> print x
+
